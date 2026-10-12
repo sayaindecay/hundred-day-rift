@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>백일의 틈 — 자동 검수</title>
+  <style>
+    :root { --bg: #e8e3d7; --text: #171b1c; --line: #b4ad9c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #171b1c; --text: #e8e3d7; --line: #3d4546; } }
+    :root[data-theme="dark"] { --bg: #171b1c; --text: #e8e3d7; --line: #3d4546; }
+    body { background: var(--bg); color: var(--text); font: 14px/1.6 Consolas, "Malgun Gothic", monospace; margin: 0; padding: 16px; }
+    table { border-collapse: collapse; margin: 1em 0; }
+    td, th { border: 1px solid var(--line); padding: 2px 8px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    pre { white-space: pre-wrap; }
+    button { min-height: 44px; font: inherit; }
+  </style>
+</head>
+<body>
+  <h1>자동 검수 — 콘텐츠·엔진 시뮬레이션</h1>
+  <p>정책별로 여러 판을 자동 진행해 종료 경로, 결말 분포, 균열·슬롯 예산을 확인한다. 저장소는 쓰지 않는다.</p>
+  <button id="run" type="button">실행 (정책 4종 × 인물 5명 × 시드 40)</button>
+  <div id="out"></div>
+
+  <script src="../js/core.js"></script>
+  <script src="../content/common.js"></script>
+  <script src="../content/cases/m01.js"></script>
+  <script src="../content/cases/m02.js"></script>
+  <script src="../content/cases/m03.js"></script>
+  <script src="../content/cases/m04.js"></script>
+  <script src="../content/cases/m08.js"></script>
+  <script src="../content/routes/shinbaek.js"></script>
+  <script src="../content/routes/gukse.js"></script>
+  <script src="../content/routes/sangbeom.js"></script>
+  <script src="../content/routes/seongbaek.js"></script>
+  <script src="../content/routes/yunyoung.js"></script>
+  <script src="../js/engine.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/validate.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const E = BG.engine;
+    E.hooks.save = function () { return true; };
+    E.hooks.settings = function () { return {}; };
+
+    function profile(bg) {
+      const p = BG.store.newProfile(bg);
+      p.name = '서윤'; p.addressForm = '서윤 씨';
+      return p;
+    }
+    function score(fx) {
+      if (!fx) return 0;
+      let s = (fx.trust || 0) * 2 + (fx.intimacy || 0) * 2;
+      if (fx.milestone) s += 3;
+      if (fx.promise) s += 3;
+      if (fx.keep) s += 4;
+      if (fx.resolve) s += 4;
+      if (fx.repromise) s += 3;
+      if (fx.boundary) s -= 8;
+      if (fx.break) s -= 8;
+      if (fx.hurt) s -= 2;
+      if (fx.ending === 'lovers') s += 20;
+      if (fx.ending && fx.ending !== 'lovers') s -= 5;
+      return s;
+    }
+
+    /* 정책: random — 아무거나 / smart — 사려 깊은 플레이어 / reckless — 위험 선택 선호 */
+    function choose(policy, opts) {
+      const r = E.get();
+      const v = r.view;
+      const en = opts.filter(function (o) { return o.enabled; });
+      if (!en.length) return null;
+      if (policy === 'random') return en[Math.floor(Math.random() * en.length)];
+      if (policy === 'casual' && v.kind === 'scene' && en[0].id !== 'next' && Math.random() < 0.4) {
+        return en[Math.floor(Math.random() * en.length)];
+      }
+      if (v.kind === 'scene') {
+        const sc = BG.content.scenes[v.id];
+        if (!sc.choices || en[0].id === 'next') return en[0];
+        let best = null, bs = -1e9;
+        en.forEach(function (o) {
+          const c = sc.choices[+o.id.slice(1)];
+          let s = score(c.fx) + (c.next ? 1 : 0);
+          if (policy === 'reckless') s = -s + Math.random();
+          if (s > bs) { bs = s; best = o; }
+        });
+        return best;
+      }
+      if (v.kind === 'hub') {
+        const R = r.res;
+        const id = function (x) { return en.filter(function (o) { return o.id === x; })[0]; };
+        if (policy === 'reckless') {
+          const risky = en.filter(function (o) { return o.id === 'a:D' || o.id === 'g:conclude'; });
+          return risky[0] || en[0];
+        }
+        if (R.hp <= 5 && id('g:aid')) return id('g:aid');
+        if (R.comp <= 5 && id('g:breathe')) return id('g:breathe');
+        const pref = ['a:A', 'a:B', 'g:collab', 'a:X', 'a:V', 'a:O', 'a:C', 'a:P', 'a:R', 'a:D'];
+        for (let i = 0; i < pref.length; i++) { const o = id(pref[i]); if (o) return o; }
+        return id('g:conclude') || en[0];
+      }
+      if (v.kind === 'conclude') {
+        const d = BG.content.cases[r.cs.id];
+        const vv = r.variants[d.id];
+        const good = d.rules.filter(function (x) { return x.kind === 'safe' && x.correct === vv; })[0];
+        const o = en.filter(function (x) { return x.id === 'r:' + good.id; })[0];
+        if (o && policy !== 'reckless') return o;
+        return en.filter(function (x) { return x.id.indexOf('r:r3') === 0; })[0] || en[0];
+      }
+      if (v.kind === 'confront') return en[0];
+      if (v.kind === 'interlude') {
+        const R = r.res;
+        const id = function (x) { return en.filter(function (o) { return o.id === x; })[0]; };
+        const pref = [R.hp < 8 ? 'i:resthp' : null, R.comp < 8 ? 'i:restcomp' : null, 'i:talk', 'i:promise', 'i:notes', 'i:supply', 'i:leave'];
+        for (let i = 0; i < pref.length; i++) { if (!pref[i]) continue; const o = id(pref[i]); if (o) return o; }
+        return id('i:leave') || en[0];
+      }
+      if (v.kind === 'final') {
+        if (r.fin.step === 2) {
+          return en.filter(function (o) { return o.id === 'f:m:together'; })[0] || en.filter(function (o) { return o.id === 'f:m:precise'; })[0] || en[0];
+        }
+        if (r.fin.step >= 5) {
+          return r.fin.method === 'together' ? (en.filter(function (o) { return o.id === 'f:t:comp'; })[0] || en[0]) : en[0];
+        }
+        if (r.fin.step <= 1) {
+          const best = en.filter(function (o) { return /f:link/.test(o.id) && /안정화/.test(o.sub); })[0];
+          return best || en[0];
+        }
+        return en[0];
+      }
+      return en[0];
+    }
+
+    function play(interest, policy, seed, mode) {
+      E.newRun({ profile: profile(['record', 'people', 'field'][seed % 3]), interest: interest, mode: mode, seed: seed });
+      let steps = 0;
+      while (E.get().view.kind !== 'summary') {
+        const opts = E.options();
+        const o = choose(policy, opts);
+        if (!o) throw new Error('선택지 없음 @ ' + E.get().view.kind + ' ' + (E.get().view.id || ''));
+        E.act(o.id);
+        if (++steps > 3000) throw new Error('무한 진행 의심 @ ' + E.get().view.kind + ' ' + (E.get().view.id || ''));
+      }
+      return { sum: E.summary(), steps: steps, run: E.get() };
+    }
+
+    function runAll() {
+      const out = document.getElementById('out');
+      out.textContent = '';
+      const v = BG.validate();
+      const pre = document.createElement('pre');
+      pre.textContent = '[정적 검수] 오류 ' + v.errors.length + ' · 경고 ' + v.warnings.length + '\n' + v.errors.concat(v.warnings.map(function (w) { return '△ ' + w; })).join('\n');
+      out.appendChild(pre);
+      const policies = ['smart', 'casual', 'random', 'reckless'];
+      const rows = [];
+      const errors = [];
+      policies.forEach(function (pol) {
+        BG.INITIAL.forEach(function (id) {
+          const agg = { n: 0, lovers: 0, apart: 0, colleague: 0, distance: 0, early: 0, stable: 0, crack: 0, slots: 0, steps: 0, maxCrack: 0, rescue: 0 };
+          for (let s = 1; s <= 40; s++) {
+            try {
+              const res = play(id, pol, s * 7919 + 13, s % 2 ? 'tutorial' : 'random');
+              const sm = res.sum;
+              agg.n++;
+              agg[sm.relationshipOutcome] = (agg[sm.relationshipOutcome] || 0) + 1;
+              if (sm.endType && sm.endType !== 'complete') agg.early++;
+              if (sm.eventOutcome === 'stable') agg.stable++;
+              agg.crack += sm.res.crack;
+              agg.maxCrack = Math.max(agg.maxCrack, sm.res.crack);
+              agg.slots += sm.slots;
+              agg.steps += res.steps;
+              if (sm.rescueUsed) agg.rescue++;
+              if (sm.relationshipOutcome === 'lovers' && !sm.romanceCompleted) errors.push(pol + '/' + id + ': lovers인데 공략 완료가 아님');
+            } catch (e) {
+              errors.push(pol + '/' + id + '/seed' + s + ': ' + e.message);
+            }
+          }
+          rows.push([pol, BG.chars[id].name, agg.n, agg.lovers, agg.apart, agg.colleague, agg.distance, agg.early, agg.stable,
+            (agg.crack / Math.max(1, agg.n)).toFixed(1), agg.maxCrack, (agg.slots / Math.max(1, agg.n)).toFixed(1), (agg.steps / Math.max(1, agg.n)).toFixed(0), agg.rescue]);
+        });
+      });
+      const t = document.createElement('table');
+      const head = ['정책', '관심 인물', '판', '연인', '헤어짐', '동료', '거리', '조기 종료', '최종 안정화', '평균 균열', '최대 균열', '평균 슬롯', '평균 클릭', '구조'];
+      t.innerHTML = '<thead><tr>' + head.map(function (x) { return '<th>' + x + '</th>'; }).join('') + '</tr></thead>';
+      const tb = document.createElement('tbody');
+      rows.forEach(function (r) {
+        const tr = document.createElement('tr');
+        r.forEach(function (c) { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      out.appendChild(t);
+      const ep = document.createElement('pre');
+      ep.id = 'errors';
+      ep.textContent = errors.length ? '[실행 오류]\n' + errors.slice(0, 60).join('\n') : '[실행 오류] 없음';
+      out.appendChild(ep);
+      window.__simResult = { rows: rows, errors: errors, validate: v };
+    }
+    document.getElementById('run').addEventListener('click', runAll);
+    window.runSim = runAll;
+  })();
+  </script>
+</body>
+</html>

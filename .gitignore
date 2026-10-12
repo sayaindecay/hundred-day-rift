@@ -1,0 +1,10 @@
+# 개인 설정(Claude Code 권한 등)은 저장소에 올리지 않는다
+.claude/settings.local.json
+
+# 원작 설정 메모 — 이 PC에만 보관
+notes/
+
+# 운영체제가 만드는 파일
+Thumbs.db
+desktop.ini
+.DS_Store
