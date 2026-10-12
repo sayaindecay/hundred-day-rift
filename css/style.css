@@ -34,7 +34,7 @@
 
   /* 글꼴 */
   --font-serif: "Nanum Myeongjo", "Noto Serif KR", "AppleMyungjo", "Batang", serif;
-  --font-sans: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-sans: "Pretendard Variable", "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-display: "Song Myung", "Nanum Myeongjo", "Batang", serif;
   --font-pixel: "Galmuri11", "DungGeunMo", "Consolas", "Malgun Gothic", monospace;
   --font-mono: "Galmuri11", "D2Coding", "Consolas", "Malgun Gothic", monospace;
@@ -76,6 +76,8 @@ body {
   line-height: 1.8;
   word-break: keep-all;
   overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 /* 가장자리로 갈수록 망점이 짙어지는 비네트 */
 body::before {
@@ -569,7 +571,7 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
   background: var(--fg); color: var(--bg);
 }
 .opt:hover:not([disabled]) .opt-key { background: var(--accent-fill); color: var(--on-accent); }
-.opt-label { font-weight: 700; line-height: 1.5; }
+.opt-label { font-weight: 650; line-height: 1.5; letter-spacing: -0.01em; }
 .opt-desc { font-size: 0.85rem; opacity: 0.8; padding-left: 2.2em; }
 .opt-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; padding-left: 2.2em; }
 .oc {
