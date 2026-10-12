@@ -36,6 +36,13 @@
     };
   };
 
+  /* 미리보기 패널이 화면 높이 안에 다 들어갈 때만 고정한다(자체 스크롤바를 만들지 않기 위해) */
+  function fitPin() {
+    const side = document.querySelector('.creator-side');
+    if (side) side.classList.toggle('pin', side.offsetHeight + 32 <= window.innerHeight);
+  }
+  window.addEventListener('resize', fitPin);
+
   BG.creator = {};
   BG.creator.open = function (opts) {
     const app = document.getElementById('app');
@@ -127,6 +134,7 @@
     function refreshPreview() {
       if (!previewEl) return;
       BG.clear(previewEl).appendChild(previewNode());
+      fitPin();
     }
 
     function stepBasic() {
@@ -282,10 +290,7 @@
               h('div', { class: 'win-body' }, previewEl)),
             h('p', { class: 'pv-legend' }, h('span', { class: 'pv-mark', 'aria-hidden': 'true' }), '지금 고치는 칸')) : null));
       BG.clear(app).appendChild(body);
-      // 미리보기가 화면보다 길면, 지금 고치는 칸이 보이도록 패널만 스크롤한다
-      const side = body.querySelector('.creator-side');
-      const on = side && side.querySelector('.pv .on');
-      if (side && on) side.scrollTop = Math.max(0, on.offsetTop - 48);
+      fitPin();
       app.focus();
       window.scrollTo(0, 0);
     }

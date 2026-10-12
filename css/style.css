@@ -357,7 +357,9 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
 .stepper-bar li.done { background: var(--tone-fine); background-color: var(--bg); }
 .stepper-bar li.done .linkish { background: var(--bg); }
 .creator-grid { display: grid; grid-template-columns: minmax(0, 1fr) 23rem; gap: 2rem; align-items: start; }
-.creator-side { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+/* 미리보기는 따로 스크롤하지 않는다. 화면 안에 다 들어갈 때만 고정(.pin)하고, 길면 페이지와 함께 스크롤된다 */
+.creator-side { position: static; }
+.creator-side.pin { position: sticky; top: 1rem; }
 .creator-side .win { margin: 0; }
 .creator-side .win-body { padding: 0.9rem 1rem 0.6rem; }
 .step-nav { display: flex; gap: 0.6rem; margin-top: 1.6rem; flex-wrap: wrap; }
@@ -685,7 +687,7 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
 /* ───────── 좁은 화면 ───────── */
 @media (max-width: 1000px) {
   .creator-grid { grid-template-columns: 1fr; }
-  .creator-side { position: static; max-height: none; overflow: visible; padding-right: 0; }
+  .creator-side, .creator-side.pin { position: static; }
 }
 @media (max-width: 899px) {
   .g-body { grid-template-columns: 1fr; padding: 0.8rem 12px 0; }
