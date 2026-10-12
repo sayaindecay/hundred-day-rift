@@ -77,18 +77,52 @@
     }
 
     let previewEl = null;
+    /* 텍스트 프로필: 신상 기록표. 지금 편집 중인 단계의 칸에 붉은 표시를 붙인다 */
+    const STEP_SEC = ['id', 'persona', 'bg', 'stats', 'look', null];
     function previewNode() {
-      const s = BG.profileSummary(p);
-      return h('div', { class: 'profile-card' },
-        h('p', { class: 'pc-head' }, s.head),
-        h('p', null, s.call),
-        h('p', null, s.persona),
-        h('p', null, s.bg),
-        h('p', null, '능력치 — ', s.stats, ' (합계 ', BG.store.statSum(p.stats), '/', BG.STAT_BUDGET, ')'),
-        h('p', null, '외모 — ', s.look || '말하지 않음'),
-        p.lookText ? h('p', { class: 'pc-free' }, '“', p.lookText, '”') : null,
-        p.selfText ? h('p', { class: 'pc-free' }, '자기 설명 — ', p.selfText) : null,
-        p.bgText ? h('p', { class: 'pc-free' }, '배경 설명 — ', p.bgText) : null);
+      const a = p.appearance || {};
+      const per = BG.PERSONALITY;
+      const cur = STEP_SEC[step];
+      const sum = BG.store.statSum(p.stats);
+      function row(k, v, sub) {
+        return h('div', { class: 'pv-row' }, h('dt', null, k), h('dd', null, v || '—', sub ? h('span', { class: 'pv-sub' }, sub) : null));
+      }
+      function sec(key, title, body, warn) {
+        return h('section', { class: 'pv-sec' + (cur === key ? ' on' : '') },
+          h('h3', { class: 'pv-h' + (warn ? ' warn-text' : '') }, title), body);
+      }
+      const name = String(p.name || '').trim();
+      const plain = function (v) { return v && v !== '말하지 않음' ? v : ''; };
+      const free = [['자기 설명', p.selfText], ['배경 설명', p.bgText], ['외모 설명', p.lookText]].filter(function (x) { return String(x[1] || '').trim(); });
+      return h('div', { class: 'pv' },
+        h('header', { class: 'pv-id' + (cur === 'id' ? ' on' : '') },
+          h('p', { class: 'pv-name' }, name || '이름 없음'),
+          h('p', { class: 'pv-meta' }, (Number.isInteger(p.age) ? p.age + '세' : '나이 미정') + ' · 여성'),
+          h('p', { class: 'pv-call' }, h('span', { class: 'pv-k' }, '부르는 말'), String(p.addressForm || '').trim() || (name ? name + ' 씨' : '—'))),
+        sec('persona', '성격', h('dl', null,
+          row(per.social.label, per.social.options[p.personality.social]),
+          row(per.risk.label, per.risk.options[p.personality.risk]),
+          row(per.voice.label, per.voice.options[p.personality.voice]),
+          row('성향', (p.traits || []).join(', ') || '없음'))),
+        sec('bg', '배경', h('dl', null,
+          row('배경', BG.BACKGROUNDS[p.background].label),
+          row('시작 도구', BG.TOOLS[p.tool].label, BG.TOOLS[p.tool].desc))),
+        sec('stats', '능력치 · 합계 ' + sum + '/' + BG.STAT_BUDGET, h('div', { class: 'pv-stats' }, BG.STAT_KEYS.map(function (k) {
+          const v = p.stats[k];
+          return h('div', { class: 'pv-stat' },
+            h('span', { class: 'pv-stat-k' }, BG.STATS[k]),
+            h('span', { class: 'pv-pips', 'aria-hidden': 'true' }, '■'.repeat(v) + '□'.repeat(BG.STAT_MAX - v)),
+            h('span', { class: 'pv-stat-v' }, v + '/' + BG.STAT_MAX));
+        })), sum !== BG.STAT_BUDGET),
+        sec('look', '외모', h('dl', null,
+          row('머리', [a.hairColor, a.hair].filter(Boolean).join(', ')),
+          row('눈', a.eyes),
+          row('키 · 체형', [plain(a.height) ? '키 ' + a.height : '', plain(a.build) ? a.build + ' 체형' : ''].filter(Boolean).join(' · ') || '말하지 않음'),
+          row('복장', a.outfit),
+          row('특징', (a.features || []).join(', ') || '없음'))),
+        free.length ? sec('free', '자유 설명', free.map(function (x) {
+          return h('blockquote', { class: 'pv-quote' }, h('span', { class: 'pv-k' }, x[0]), x[1]);
+        })) : null);
     }
     function refreshPreview() {
       if (!previewEl) return;
@@ -203,7 +237,7 @@
       const v = BG.store.validateProfile(p);
       return [
         h('p', { class: 'lead' }, '텍스트 프로필을 확인하세요. 조사를 시작하면 이 프로필의 복사본이 그 판에 고정됩니다. 이후 원본을 고쳐도 진행 중인 판은 바뀌지 않습니다.'),
-        previewNode(),
+        h('div', { class: 'profile-card' }, previewNode()),
         h('div', { class: 'samples' },
           h('h3', null, '문장이 이렇게 달라집니다'),
           sample('social'), sample('risk'), sample('voice'), sample('look')),
@@ -242,8 +276,16 @@
           }))),
         h('div', { class: 'creator-grid' },
           h('section', { class: 'creator-main' }, builders[step](), errorsEl, nav),
-          step < 5 ? h('aside', { class: 'creator-side' }, h('h2', { class: 'small mono' }, '텍스트 프로필 미리보기'), previewEl) : null));
+          step < 5 ? h('aside', { class: 'creator-side', 'aria-label': '텍스트 프로필 미리보기' },
+            h('section', { class: 'win' },
+              h('div', { class: 'win-bar' }, h('span', { class: 'sq', 'aria-hidden': 'true' }), h('span', null, 'PROFILE · 텍스트 프로필'), h('span', { class: 'grow' })),
+              h('div', { class: 'win-body' }, previewEl)),
+            h('p', { class: 'pv-legend' }, h('span', { class: 'pv-mark', 'aria-hidden': 'true' }), '지금 고치는 칸')) : null));
       BG.clear(app).appendChild(body);
+      // 미리보기가 화면보다 길면, 지금 고치는 칸이 보이도록 패널만 스크롤한다
+      const side = body.querySelector('.creator-side');
+      const on = side && side.querySelector('.pv .on');
+      if (side && on) side.scrollTop = Math.max(0, on.offsetTop - 48);
       app.focus();
       window.scrollTo(0, 0);
     }
