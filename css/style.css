@@ -175,15 +175,19 @@ a { color: var(--fg); }
   cursor: pointer;
   box-shadow: 3px 3px 0 var(--fg);
 }
-.btn:hover:not([disabled]) { background: var(--fg); color: var(--bg); }
+/* 마우스처럼 진짜로 올려 둘 수 있는 기기에서만 hover 효과를 쓴다.
+ * 터치 기기에서는 누른 자리에 hover가 남아 엉뚱한 칸이 칠해진 채로 보이기 때문이다. */
+@media (hover: hover) {
+  .btn:hover:not([disabled]) { background: var(--fg); color: var(--bg); }
+  .btn.primary:hover:not([disabled]) { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
+  .btn.danger:hover:not([disabled]) { background: var(--accent-fill); color: var(--on-accent); }
+  .btn.ghost:hover:not([disabled]) { border-color: var(--fg); }
+}
 .btn:active:not([disabled]) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--fg); }
 .btn[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .btn.primary { background: var(--fg); color: var(--bg); }
-.btn.primary:hover:not([disabled]) { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
 .btn.danger { color: var(--accent); border-color: var(--accent); box-shadow: 3px 3px 0 var(--accent); }
-.btn.danger:hover:not([disabled]) { background: var(--accent-fill); color: var(--on-accent); }
 .btn.ghost { box-shadow: none; border-color: transparent; }
-.btn.ghost:hover:not([disabled]) { border-color: var(--fg); }
 .btn.small { font-size: 0.78rem; padding: 0.3em 0.75em; }
 .btn.big { font-size: 0.95rem; padding: 0.6em 1.2em; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .btn.sq { width: 44px; padding: 0; font-size: 1.1rem; }
@@ -260,11 +264,13 @@ a { color: var(--fg); }
   border: var(--frame) solid var(--fg); background: var(--bg); color: var(--fg);
   font: inherit; cursor: pointer; box-shadow: 3px 3px 0 var(--fg);
 }
-.idx:hover:not([disabled]) { background: var(--fg); color: var(--bg); }
 .idx:active:not([disabled]) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--fg); }
 .idx[disabled] { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .idx.primary { background: var(--fg); color: var(--bg); }
-.idx.primary:hover { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+@media (hover: hover) {
+  .idx:hover:not([disabled]) { background: var(--fg); color: var(--bg); }
+  .idx.primary:hover { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+}
 .idx-no { font-family: var(--font-pixel); font-size: 0.8rem; }
 .idx-label { font-family: var(--font-display); font-size: 1.15rem; display: flex; flex-direction: column; line-height: 1.3; }
 .idx-sub { font-family: var(--font-pixel); font-size: 0.7rem; opacity: 0.8; }
@@ -289,9 +295,11 @@ a { color: var(--fg); }
 .cards.two { grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
 .card { border: var(--frame) solid var(--fg); background: var(--bg); padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; }
 .card.pick { cursor: pointer; position: relative; box-shadow: 4px 4px 0 var(--fg); }
-.card.pick:hover { box-shadow: 4px 4px 0 var(--fg), inset 0 0 0 1px var(--fg); }
+@media (hover: hover) { .card.pick:hover { box-shadow: 4px 4px 0 var(--fg), inset 0 0 0 1px var(--fg); } }
 .card.pick input { position: absolute; opacity: 0; pointer-events: none; }
-.card.pick:focus-within { outline: 3px solid var(--accent); outline-offset: 3px; }
+/* 초점 테두리는 키보드로 옮겨 왔을 때만. 손가락으로 누른 칸에 붉은 테두리가 남지 않게 한다 */
+.card.pick:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 3px; }
+@supports not selector(:has(*)) { .card.pick:focus-within { outline: 3px solid var(--accent); outline-offset: 3px; } }
 .card.pick.on { background: var(--fg); color: var(--bg); }
 .card.pick.on .dim, .card.pick.on .small { color: inherit; opacity: 0.85; }
 .card.pick.on strong::before { content: "■ "; color: var(--accent); }
@@ -335,10 +343,13 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
   font-size: 0.9rem;
 }
 .seg-item input, .chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.seg-item:hover, .chip:hover { background: var(--tone-fine); background-color: var(--bg); }
-.seg-item:focus-within, .chip:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { .seg-item:hover, .chip:hover { box-shadow: 3px 3px 0 var(--fg); } }
+.seg-item:has(input:focus-visible), .chip:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+@supports not selector(:has(*)) { .seg-item:focus-within, .chip:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; } }
 .seg-item.on, .chip.on { background: var(--fg); color: var(--bg); }
 .seg-item.on span::before, .chip.on::before { content: "■ "; color: var(--accent); }
+.chip.off { opacity: 0.4; cursor: not-allowed; }
+@media (hover: hover) { .chip.off:hover { box-shadow: none; } }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; min-height: 44px; margin: 0.4rem 0; cursor: pointer; }
 .toggle input { width: 22px; height: 22px; accent-color: var(--accent-fill); }
@@ -559,7 +570,7 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
   border: var(--frame) solid var(--fg); background: var(--bg); color: var(--fg);
   font: inherit; cursor: pointer; box-shadow: 4px 4px 0 var(--fg);
 }
-.opt:hover:not([disabled]) { background: var(--fg); color: var(--bg); }
+@media (hover: hover) { .opt:hover:not([disabled]) { background: var(--fg); color: var(--bg); } }
 .opt:active:not([disabled]) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--fg); }
 .opt[disabled] { cursor: not-allowed; box-shadow: none; border-style: dashed; }
 .opt[disabled] .opt-label { text-decoration: line-through; opacity: 0.55; }
@@ -572,7 +583,7 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
   font-family: var(--font-pixel); font-size: 0.72rem;
   background: var(--fg); color: var(--bg);
 }
-.opt:hover:not([disabled]) .opt-key { background: var(--accent-fill); color: var(--on-accent); }
+@media (hover: hover) { .opt:hover:not([disabled]) .opt-key { background: var(--accent-fill); color: var(--on-accent); } }
 .opt-label { font-weight: 650; line-height: 1.5; letter-spacing: -0.01em; }
 .opt-desc { font-size: 0.85rem; opacity: 0.8; padding-left: 2.2em; }
 .opt-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; padding-left: 2.2em; }
@@ -582,15 +593,15 @@ input[type="range"] { width: 100%; max-width: 20rem; min-height: 44px; accent-co
   border: 1px solid currentColor; padding: 0.05em 0.45em;
 }
 .oc.risk, .oc.crack, .oc.warn { color: var(--accent); }
-.opt:hover:not([disabled]) .oc.risk, .opt:hover:not([disabled]) .oc.crack, .opt:hover:not([disabled]) .oc.warn { color: var(--accent); background: var(--bg); }
+@media (hover: hover) { .opt:hover:not([disabled]) .oc.risk, .opt:hover:not([disabled]) .oc.crack, .opt:hover:not([disabled]) .oc.warn { color: var(--accent); background: var(--bg); } }
 .oc.bonus { border-style: dashed; }
 .oc.sure { background: currentColor; }
 .oc.sure > span { color: var(--bg); }
-.opt:hover:not([disabled]) .oc.sure > span { color: var(--fg); }
+@media (hover: hover) { .opt:hover:not([disabled]) .oc.sure > span { color: var(--fg); } }
 .meter { display: inline-block; width: 3.6em; height: 0.6em; border: 1px solid currentColor; position: relative; }
 .meter i { position: absolute; inset: 0 auto 0 0; background: currentColor; }
 .meter::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), var(--bg) calc(10% - 1px) 10%); }
-.opt:hover:not([disabled]) .meter::after { background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), var(--fg) calc(10% - 1px) 10%); }
+@media (hover: hover) { .opt:hover:not([disabled]) .meter::after { background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), var(--fg) calc(10% - 1px) 10%); } }
 .opt-why { font-size: 0.78rem; color: var(--accent); padding-left: 2.2em; font-family: var(--font-pixel); }
 
 /* 문장 나타남 */

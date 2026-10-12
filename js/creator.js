@@ -43,6 +43,12 @@
   }
   window.addEventListener('resize', fitPin);
 
+  /* 마지막 조작이 손가락·마우스였는지 기억한다. 다시 그린 뒤 초점을 되돌리는 건 키보드 사용자에게만 한다
+   * (모바일에서 select에 초점을 다시 주면 선택 창이 한 번 더 열린다) */
+  let pointerUsed = false;
+  document.addEventListener('pointerdown', function () { pointerUsed = true; }, true);
+  document.addEventListener('keydown', function () { pointerUsed = false; }, true);
+
   BG.creator = {};
   BG.creator.open = function (opts) {
     const app = document.getElementById('app');
@@ -71,16 +77,59 @@
       ta.value = p[path] || '';
       return h('div', { class: 'ta-wrap' }, ta, counter);
     }
+    /* 고르기·칩·드롭다운은 화면 전체를 다시 그리지 않고 제자리에서 표시만 바꾼다.
+     * (다시 그리면 모바일에서 선택 창이 다시 열리거나 누른 자리에 hover·초점 흔적이 남는다) */
+    function changed() {
+      refreshPreview();
+      Array.prototype.forEach.call(app.querySelectorAll('[data-sample]'), function (el) {
+        el.textContent = sampleText(el.getAttribute('data-sample'));
+      });
+    }
+    function markOn(box, idx) {
+      Array.prototype.forEach.call(box.children, function (el, j) { el.classList.toggle('on', j === idx); });
+    }
     function radioGroup(name, options, current, onPick) {
-      return h('div', { class: 'seg', role: 'radiogroup' }, options.map(function (o, i) {
+      const box = h('div', { class: 'seg', role: 'radiogroup' });
+      options.forEach(function (o, i) {
         const id = name + '-' + i;
-        return h('label', { class: 'seg-item' + (current === i ? ' on' : ''), for: id },
-          h('input', { type: 'radio', id: id, name: name, checked: current === i, onchange: function () { onPick(i); render(); } }),
-          h('span', null, o));
-      }));
+        box.appendChild(h('label', { class: 'seg-item' + (current === i ? ' on' : ''), for: id },
+          h('input', { type: 'radio', id: id, name: name, checked: current === i, onchange: function () { onPick(i); markOn(box, i); changed(); } }),
+          h('span', null, o)));
+      });
+      return box;
+    }
+    /* 최대 max개까지 고르는 칩 묶음. get()은 지금 목록, put(list)는 새 목록 저장 */
+    function chipGroup(items, max, get, put) {
+      const box = h('div', { class: 'chips' });
+      function sync() {
+        const list = get();
+        Array.prototype.forEach.call(box.children, function (lab, i) {
+          const on = list.indexOf(items[i]) >= 0;
+          const input = lab.firstChild;
+          input.checked = on;
+          input.disabled = !on && list.length >= max;
+          lab.classList.toggle('on', on);
+          lab.classList.toggle('off', input.disabled);
+        });
+      }
+      items.forEach(function (t) {
+        box.appendChild(h('label', { class: 'chip' },
+          h('input', { type: 'checkbox', onchange: function (e) {
+            const list = get();
+            if (e.target.checked) { if (list.length < max) put(list.concat([t])); }
+            else put(list.filter(function (x) { return x !== t; }));
+            sync();
+            changed();
+          } }), t));
+      });
+      sync();
+      return box;
+    }
+    function sampleText(key) {
+      return '예시 — ' + BG.text.render(SAMPLES[key], ctxFor(p));
     }
     function sample(key) {
-      return h('p', { class: 'sample' }, '예시 — ', BG.text.render(SAMPLES[key], ctxFor(p)));
+      return h('p', { class: 'sample', 'data-sample': key }, sampleText(key));
     }
 
     let previewEl = null;
@@ -155,14 +204,7 @@
           sample(k)));
       });
       out.push(h('fieldset', { class: 'group' }, h('legend', null, '성향 태그 (최대 2개)'),
-        h('div', { class: 'chips' }, BG.TRAITS.map(function (t) {
-          const on = p.traits.indexOf(t) >= 0;
-          return h('label', { class: 'chip' + (on ? ' on' : '') },
-            h('input', { type: 'checkbox', checked: on, disabled: !on && p.traits.length >= 2, onchange: function (e) {
-              if (e.target.checked) { if (p.traits.length < 2) p.traits.push(t); } else p.traits = p.traits.filter(function (x) { return x !== t; });
-              render();
-            } }), t);
-        })),
+        chipGroup(BG.TRAITS, 2, function () { return p.traits; }, function (l) { p.traits = l; }),
         sample('trait')));
       out.push(field('자기 설명 (선택)', textArea('selfText', BG.LIMITS.selfText, '프로필에 그대로 표시됩니다. 규칙에는 쓰이지 않습니다.')));
       return out;
@@ -170,19 +212,26 @@
     function stepBackground() {
       const out = [h('p', { class: 'lead' }, '배경은 행동의 성향과 시작 도구를 정합니다. 실제 전문 자격이나 인물과의 친분은 생기지 않습니다. 진짜 전문 판단은 동행과의 협력으로 얻습니다.'),
         h('p', { class: 'small dim' }, '배경을 고르면 능력치와 도구가 추천값으로 바뀝니다. 다음 단계에서 자유롭게 다시 나눌 수 있습니다.')];
-      out.push(h('div', { class: 'cards', role: 'radiogroup' }, BG.BG_KEYS.map(function (k) {
+      const toolSel = h('select', { onchange: function (e) { p.tool = e.target.value; refreshPreview(); } },
+        Object.keys(BG.TOOLS).map(function (t) { return h('option', { value: t, selected: p.tool === t }, BG.TOOLS[t].label + ' — ' + BG.TOOLS[t].desc); }));
+      const cards = h('div', { class: 'cards', role: 'radiogroup' });
+      BG.BG_KEYS.forEach(function (k, i) {
         const b = BG.BACKGROUNDS[k];
         const on = p.background === k;
-        return h('label', { class: 'card pick' + (on ? ' on' : '') },
-          h('input', { type: 'radio', name: 'bg', checked: on, onchange: function () { p.background = k; p.tool = b.tool; p.stats = BG.clone(b.stats); render(); } }),
+        cards.appendChild(h('label', { class: 'card pick' + (on ? ' on' : '') },
+          h('input', { type: 'radio', name: 'bg', checked: on, onchange: function () {
+            p.background = k; p.tool = b.tool; p.stats = BG.clone(b.stats);
+            toolSel.value = b.tool;
+            markOn(cards, i);
+            changed();
+          } }),
           h('strong', null, b.label),
           h('span', null, b.desc),
           h('span', { class: 'mono small' }, '추천 능력 — ' + BG.STAT_KEYS.map(function (s) { return BG.STATS[s] + ' ' + b.stats[s]; }).join(' · ')),
-          h('span', { class: 'small' }, '추천 도구 — ' + BG.TOOLS[b.tool].label));
-      })));
-      out.push(field('시작 도구', h('select', { onchange: function (e) { p.tool = e.target.value; refreshPreview(); } },
-        Object.keys(BG.TOOLS).map(function (t) { return h('option', { value: t, selected: p.tool === t }, BG.TOOLS[t].label + ' — ' + BG.TOOLS[t].desc); })),
-        '정해진 목록에서만 고릅니다. 도구는 결말에 필요한 단서를 독점하지 않습니다.'));
+          h('span', { class: 'small' }, '추천 도구 — ' + BG.TOOLS[b.tool].label)));
+      });
+      out.push(cards);
+      out.push(field('시작 도구', toolSel, '정해진 목록에서만 고릅니다. 도구는 결말에 필요한 단서를 독점하지 않습니다.'));
       out.push(field('배경 설명 (선택)', textArea('bgText', BG.LIMITS.bgText, '출발 동기, 일상 경험, 약점 등. 텍스트로만 저장되며 규칙에 영향을 주지 않습니다.')));
       return out;
     }
@@ -210,16 +259,19 @@
     function apSelect(key, label) {
       const opts = BG.APPEARANCE[key];
       const cur = p.appearance[key] || '';
-      const custom = cur && opts.indexOf(cur) < 0;
+      const showCustom = cur === '' || opts.indexOf(cur) < 0;
+      const own = h('input', { type: 'text', id: 'ap-' + key, maxlength: BG.LIMITS.custom, value: cur, placeholder: '짧게 직접 입력', hidden: !showCustom, oninput: function (e) { p.appearance[key] = e.target.value; changed(); } });
       const sel = h('select', { onchange: function (e) {
-        if (e.target.value === '__custom') { p.appearance[key] = ''; render(); setTimeout(function () { const i = document.getElementById('ap-' + key); if (i) i.focus(); }, 0); }
-        else { p.appearance[key] = e.target.value; render(); }
+        const custom = e.target.value === '__custom';
+        p.appearance[key] = custom ? '' : e.target.value;
+        own.value = p.appearance[key];
+        own.hidden = !custom;
+        changed();
+        if (custom) own.focus();
       } },
         opts.map(function (o) { return h('option', { value: o, selected: cur === o }, o); }),
-        h('option', { value: '__custom', selected: custom || cur === '' }, '직접 입력…'));
-      const showCustom = custom || cur === '';
-      return h('div', { class: 'field' }, h('span', { class: 'field-label' }, label), sel,
-        showCustom ? h('input', { type: 'text', id: 'ap-' + key, maxlength: BG.LIMITS.custom, value: cur, placeholder: '짧게 직접 입력', oninput: function (e) { p.appearance[key] = e.target.value; refreshPreview(); } }) : null);
+        h('option', { value: '__custom', selected: showCustom }, '직접 입력…'));
+      return h('div', { class: 'field' }, h('span', { class: 'field-label' }, label), sel, own);
     }
     function stepLook() {
       return [
@@ -228,15 +280,7 @@
           apSelect('hairColor', '머리 색'), apSelect('hair', '머리 모양'), apSelect('eyes', '눈'),
           apSelect('height', '키'), apSelect('build', '체형'), apSelect('outfit', '복장')),
         h('fieldset', { class: 'group' }, h('legend', null, '특징·소품 (최대 4개)'),
-          h('div', { class: 'chips' }, BG.APPEARANCE.features.map(function (f) {
-            const on = p.appearance.features.indexOf(f) >= 0;
-            return h('label', { class: 'chip' + (on ? ' on' : '') },
-              h('input', { type: 'checkbox', checked: on, disabled: !on && p.appearance.features.length >= 4, onchange: function (e) {
-                if (e.target.checked) p.appearance.features.push(f);
-                else p.appearance.features = p.appearance.features.filter(function (x) { return x !== f; });
-                render();
-              } }), f);
-          })),
+          chipGroup(BG.APPEARANCE.features, 4, function () { return p.appearance.features; }, function (l) { p.appearance.features = l; }),
           sample('look')),
         field('자유 외모 설명 (선택)', textArea('lookText', BG.LIMITS.lookText, '프로필에 원문 그대로 표시됩니다.')),
       ];
@@ -306,7 +350,7 @@
         window.scrollTo(0, 0);
       } else {
         window.scrollTo(0, keepY);
-        const el = focusIdx >= 0 ? focusables()[focusIdx] : null;
+        const el = focusIdx >= 0 && !pointerUsed ? focusables()[focusIdx] : null;
         if (el && !el.disabled) el.focus({ preventScroll: true });
       }
     }
