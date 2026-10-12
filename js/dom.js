@@ -29,6 +29,14 @@
     return e;
   };
 
+  /* SVG 요소(장식용 균열선 등) */
+  BG.svg = function (tag, attrs) {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    for (let i = 2; i < arguments.length; i++) if (arguments[i]) e.appendChild(arguments[i]);
+    return e;
+  };
+
   BG.clear = function (node) {
     while (node.firstChild) node.removeChild(node.firstChild);
     return node;
@@ -61,7 +69,8 @@
         return h('button', { class: 'btn' + (a.primary ? ' primary' : '') + (a.danger ? ' danger' : ''), type: 'button', onclick: function () { close(a.value); } }, a.label);
       });
       const box = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'modal-title' },
-        h('h2', { id: 'modal-title', class: 'modal-title' }, opts.title || ''),
+        h('div', { class: 'win-bar' }, h('span', { class: 'sq', 'aria-hidden': 'true' }),
+          h('h2', { id: 'modal-title', class: 'modal-title' }, opts.title || '')),
         opts.body instanceof Node ? opts.body : h('div', { class: 'modal-body' }, [].concat(opts.body || []).map(function (t) { return h('p', null, t); })),
         h('div', { class: 'modal-actions' }, actions));
       BG.clear(root);

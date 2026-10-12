@@ -635,6 +635,7 @@
     const d = caseDef();
     const out = [];
     out.push('# 사건 기록 — ' + d.no + ' ' + d.title);
+    out.push({ k: 'stamp', text: E.LABELS.outcome[cs.outcome], tone: cs.outcome });
     out.push(chg('info', '사건 결과: ' + E.LABELS.outcome[cs.outcome] + ' · 변형 ' + run.variants[d.id]));
     if (cs.outcome === 'stable') {
       out.push('현장은 조용해졌다. 남은 물건 가운데 쓸 만한 것을 챙긴다.');
@@ -1281,7 +1282,21 @@
       list.push({ id: 'c' + i, kind: 'choice', label: render(c.label), sub: sub, enabled: ok, reason: ok ? '' : c.why || '' });
     });
     if (!list.length) return [{ id: 'next', kind: 'next', enabled: true, label: '계속' }];
-    return list;
+    return shuffleFor(list, run.seed + '|' + v.id);
+  }
+  /* 선택지 순서를 판마다 섞는다. 판정용 난수는 쓰지 않으므로 같은 판에서는 다시 열어도 순서가 같다 */
+  function shuffleFor(list, key) {
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+    let s = h >>> 0 || 1;
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const p = BG.rngStep(s);
+      s = p[1];
+      const j = Math.floor(p[0] * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
   }
   function doChoice(i) {
     const v = run.view;

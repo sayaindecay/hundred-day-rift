@@ -119,22 +119,48 @@
       const label = r.phase === 'case' ? '사건 ' + (r.chapter + 1) + '/4' : r.phase === 'interlude' ? '막간 ' + ((r.il && r.il.n + 1) || '') + '/3' : r.phase === 'final' || r.phase === 'confession' ? '최종 겹침' : r.phase === 'ending' ? '귀환 기록' : '서장';
       cont = r.profile.name + ' · ' + ch.name + ' · ' + label + ' · 균열 ' + r.res.crack;
     }
-    const node = h('div', { class: 'title-screen' },
-      h('div', { class: 'title-card' },
-        h('p', { class: 'mono small dim' }, 'CASE FILE · 2027 · BETA ' + BG.VERSION.content),
-        h('h1', { class: 'title' }, BG.VERSION.title),
-        h('p', { class: 'subtitle' }, BG.VERSION.subtitle),
-        h('p', { class: 'lead' }, '이상현상을 조사하러 들어간 밤, 당신은 다른 시간에서 온 사람을 만난다. 무엇을 알아내고, 누구를 믿고, 어떤 약속을 남긴 채 함께 돌아올 것인가.'),
-        h('nav', { class: 'title-menu', 'aria-label': '주 메뉴' },
-          h('button', { class: 'btn primary big', type: 'button', onclick: newRunFlow }, '새 조사'),
-          h('button', { class: 'btn big', type: 'button', disabled: !live, onclick: continueRun }, '계속하기', h('span', { class: 'btn-sub' }, cont)),
-          h('button', { class: 'btn big', type: 'button', onclick: function () { UI.go('records'); } }, '조사기록'),
-          h('button', { class: 'btn big', type: 'button', onclick: function () { UI.go('settings'); } }, '설정'),
-          h('button', { class: 'btn big', type: 'button', onclick: function () { UI.go('data'); } }, '저장 관리')),
-        h('p', { class: 'fine' }, '텍스트 기반 · 이미지 없음 · 정상 완주 약 45–60분 · 저장은 이 브라우저에만 남습니다.'),
-        h('p', { class: 'fine' }, '성인 수준의 공포·폭력·신체 훼손 묘사가 포함될 수 있습니다. 설정에서 잔혹 묘사를 줄여도 단서·선택·결말은 같습니다. 연애 묘사는 고백·포옹·입맞춤까지입니다.'),
-        !S.available ? h('p', { class: 'warn-text' }, '▲ 이 브라우저에서는 로컬 저장을 쓸 수 없습니다. 새로고침하면 진행이 사라집니다. 저장 관리에서 수시로 내보내 주세요.') : null,
-        lr.error ? h('p', { class: 'warn-text' }, '▲ ', lr.error) : null));
+    const sel = profiles.profiles.filter(function (p) { return p && p.id === profiles.selectedProfileId; })[0];
+    const doneCount = meta.endings.filter(function (e) { return e.completed; }).length;
+    function idx(no, label, sub, onclick, opts) {
+      opts = opts || {};
+      return h('button', { class: 'idx' + (opts.primary ? ' primary' : ''), type: 'button', disabled: !!opts.disabled, onclick: onclick },
+        h('span', { class: 'idx-no' }, no),
+        h('span', { class: 'idx-label' }, label, sub ? h('span', { class: 'idx-sub' }, sub) : null),
+        h('span', { class: 'idx-arrow', 'aria-hidden': 'true' }, '▶'));
+    }
+    const crack = BG.svg('svg', { class: 'cover-crack', viewBox: '0 0 40 600', preserveAspectRatio: 'none', 'aria-hidden': 'true' },
+      BG.svg('polyline', { points: '22,0 17,58 27,104 14,166 25,226 11,298 28,352 16,418 26,476 13,540 21,600', fill: 'none', 'vector-effect': 'non-scaling-stroke' }));
+    const node = h('div', { class: 'cover-wrap' },
+      h('section', { class: 'cover koma', 'aria-label': '타이틀' },
+        h('div', { class: 'cover-tab' }, 'CASE FILE  No.2027-100 · BETA ' + BG.VERSION.content),
+        h('span', { class: 'stamp cover-stamp', 'aria-hidden': 'true' }, live ? '조사중' : '미결'),
+        h('div', { class: 'cover-grid' },
+          h('div', { class: 'cover-title' },
+            crack,
+            h('h1', { class: 'title-v' }, BG.VERSION.title),
+            h('p', { class: 'title-v-sub' }, BG.VERSION.subtitle)),
+          h('div', { class: 'cover-body' },
+            h('table', { class: 'form-table' },
+              h('caption', { class: 'sr' }, '기록철 표지'),
+              h('tbody', null,
+                [['분류', '겹침 — 시간 이상 현상'],
+                  ['수록', '사건 4건 · 막간 3 · 최종 겹침'],
+                  ['열람 시간', '약 45–60분'],
+                  ['담당 탐사자', sel ? sel.name : '미배정'],
+                  ['귀환 기록', doneCount ? '공략 완료 ' + doneCount + '건' : '없음']].map(function (r) {
+                  return h('tr', null, h('th', { scope: 'row' }, h('span', null, r[0])), h('td', null, r[1]));
+                }))),
+            h('p', { class: 'caption' }, '이상현상을 조사하러 들어간 밤, 당신은 다른 시간에서 온 사람을 만난다. 무엇을 알아내고, 누구를 믿고, 어떤 약속을 남긴 채 함께 돌아올 것인가.'),
+            h('nav', { class: 'index', 'aria-label': '주 메뉴' },
+              idx('01', '새 조사', null, newRunFlow, { primary: true }),
+              idx('02', '계속하기', cont, continueRun, { disabled: !live }),
+              idx('03', '조사기록', '결말 도감 · 인물 · 지난 조사', function () { UI.go('records'); }),
+              idx('04', '설정', '글자 · 속도 · 테마 · 공포 표현', function () { UI.go('settings'); }),
+              idx('05', '저장 관리', '내보내기 · 가져오기', function () { UI.go('data'); })),
+            h('p', { class: 'fine' }, '텍스트 기반 · 저장은 이 브라우저에만 남습니다.'),
+            h('p', { class: 'fine' }, '열람 주의 — 성인 수준의 공포·폭력·신체 훼손 묘사가 있습니다. 설정에서 잔혹 묘사를 줄여도 단서·선택·결말은 같습니다. 연애 묘사는 고백·포옹·입맞춤까지입니다.'),
+            !S.available ? h('p', { class: 'warn-text' }, '▲ 이 브라우저에서는 로컬 저장을 쓸 수 없습니다. 새로고침하면 진행이 사라집니다. 저장 관리에서 수시로 내보내 주세요.') : null,
+            lr.error ? h('p', { class: 'warn-text' }, '▲ ', lr.error) : null))));
     BG.clear(app).appendChild(node);
   }
   async function newRunFlow() {
@@ -303,9 +329,14 @@
   function lineNode(l, i) {
     const style = '--i:' + i;
     switch (l.k) {
-      case 'head': return h('p', { class: 'l-head mono', style: style }, '▣ ', l.text);
+      case 'head': return h('p', { class: 'l-head', style: style }, '▣ ', l.text);
       case 'note': return h('p', { class: 'l-note', style: style }, '※ ', l.text);
-      case 'warn': return h('p', { class: 'l-warn', style: style }, h('span', { 'aria-hidden': 'true' }, '▲ '), h('span', { class: 'sr' }, '경고: '), l.text);
+      case 'warn':
+        return h('div', { class: 'l-warn', style: style },
+          h('span', { class: 'sfx', 'aria-hidden': 'true' }, '!!'),
+          h('p', null, h('span', { class: 'sr' }, '경고: '), l.text));
+      case 'stamp':
+        return h('p', { class: 'stamp-line', style: style }, h('span', { class: 'stamp' }, l.text));
       case 'say':
         return h('div', { class: 'l-say', style: style },
           h('p', { class: 'who' }, h('span', { class: 'name' }, l.name), h('span', { class: 'layer ' + (LAYER_CLASS[l.layer] || 'now') }, l.layer)),
@@ -326,7 +357,13 @@
 
   function bar(cur, max, cls) {
     const pct = Math.max(0, Math.min(100, (cur / max) * 100));
-    return h('div', { class: 'bar ' + (cls || ''), role: 'presentation' }, h('i', { style: 'width:' + pct + '%' }));
+    return h('div', { class: 'bar ' + (cls || ''), role: 'presentation', style: '--cell:' + (100 / max) + '%' }, h('i', { style: 'width:' + pct + '%' }));
+  }
+  /* 1-bit 창: 줄무늬 제목 막대 + 본문 */
+  function win(title, body, extra) {
+    return h('section', { class: 'win' + (extra ? ' ' + extra : '') },
+      h('div', { class: 'win-bar' }, h('span', { class: 'sq', 'aria-hidden': 'true' }), h('span', null, title), h('span', { class: 'grow' })),
+      h('div', { class: 'win-body' }, body));
   }
   function resBlock(compact) {
     const r = E.get();
@@ -346,7 +383,7 @@
       row('comp', '◎', '침착', R.comp, R.compMax),
       row('supply', '▣', '물자', R.supply, R.supplyMax),
       row('crack', '◆', '균열', R.crack, 100, crackBar),
-      compact ? null : h('p', { class: 'small dim' }, '균열 40 장소 변형' + (r.marks[40] ? ' ✓' : '') + ' · 70 최종 압박' + (r.marks[70] ? ' ✓' : '') + ' · 100 조사 종료'));
+      compact ? null : h('p', { class: 'res-note' }, '균열 40 장소 변형' + (r.marks[40] ? ' ■' : ' □') + ' · 70 최종 압박' + (r.marks[70] ? ' ■' : ' □') + ' · 100 조사 종료'));
   }
   function companionBlock() {
     const r = E.get();
@@ -360,11 +397,11 @@
     const bounds = Object.keys(r.rel.boundaries).filter(function (b) { return !r.rel.boundaries[b].resolved; });
     const m = r.rel.milestones;
     return h('div', { class: 'comp' },
-      h('p', { class: 'comp-name' }, c.name, h('span', { class: 'small dim' }, ' · 동행')),
-      h('p', { class: 'small' }, '특기 — ', c.spec.name, ': ', c.spec.desc),
+      h('p', { class: 'comp-name' }, c.name),
+      h('p', { class: 'small' }, h('span', { class: 'k' }, '특기'), c.spec.name, ' — ', c.spec.desc),
       h('p', { class: 'small' + (hurt ? ' warn-text' : '') }, hurt ? '▼ 부상·탈진 — 이번 사건 동안 보정·특기 없음' : '● 함께 움직이는 중'),
-      h('p', null, h('span', { class: 'k' }, '관계 '), lab.trust, ' · ', lab.intimacy, settings.debug ? h('span', { class: 'mono dim' }, ' [신뢰 ' + r.rel.trust + ' · 친밀 ' + r.rel.intimacy + ']') : null),
-      h('p', null, h('span', { class: 'k' }, '약속 '), rt.promiseLabel, ' — ', h('strong', null, psLabel)),
+      h('p', null, h('span', { class: 'k' }, '관계'), lab.trust, ' · ', lab.intimacy, settings.debug ? h('span', { class: 'mono dim' }, ' [신뢰 ' + r.rel.trust + ' · 친밀 ' + r.rel.intimacy + ']') : null),
+      h('p', null, h('span', { class: 'k' }, '약속'), rt.promiseLabel, ' — ', h('strong', null, psLabel)),
       h('p', { class: 'mile' }, Object.keys(E.LABELS.milestone).map(function (k) { return h('span', { class: m[k] ? 'on' : '' }, (m[k] ? '■ ' : '□ ') + E.LABELS.milestone[k]); })),
       bounds.length ? h('p', { class: 'warn-text small' }, '✕ 해명이 필요한 일 — ', bounds.map(function (b) { return rt.boundaries[b] || b; }).join(', ')) : null,
       h('p', { class: 'small' }, resc ? '● 구조 가능 — 한 판에 1회, 신뢰가 쌓인 동행이 곁에 있을 때' : r.rescueUsed ? '○ 구조 기회 사용함' : '○ 구조 불가 — ' + (hurt ? '동행 부상' : '신뢰가 ‘함께 움직임’에 이르지 못함')));
@@ -374,7 +411,7 @@
     const t = BG.TOOLS[r.items[0]];
     if (!t) return null;
     const used = t.stat ? r.sp.tool : r.cs && r.cs.done.kit;
-    return h('p', { class: 'small' }, h('span', { class: 'k' }, '도구 '), t.label, ' — ', t.desc, used ? h('span', { class: 'dim' }, ' (이번 사건 사용함)') : null);
+    return h('p', { class: 'small' }, h('span', { class: 'k' }, '도구'), t.label, ' — ', t.desc, used ? h('span', { class: 'dim' }, ' (이번 사건 사용함)') : null);
   }
   function cluesTab() {
     const r = E.get();
@@ -440,15 +477,15 @@
     const body = sideTab === 'people' ? peopleTab() : sideTab === 'log' ? logTab() : sideTab === 'debug' ? debugTab() : cluesTab();
     return h('aside', { class: 'side' + (drawer ? ' open' : ''), id: 'side', 'aria-label': '상태와 기록' },
       h('div', { class: 'side-top' },
-        h('h2', { class: 'mono small' }, '상태'),
-        h('button', { class: 'btn small ghost drawer-close', type: 'button', onclick: function () { drawer = false; renderGame(); } }, '닫기')),
-      resBlock(false),
-      companionBlock(),
-      toolBlock(),
-      h('div', { class: 'tabs', role: 'tablist' }, tabs.map(function (t) {
-        return h('button', { class: 'tab' + (sideTab === t[0] ? ' on' : ''), role: 'tab', type: 'button', 'aria-selected': sideTab === t[0] ? 'true' : 'false', onclick: function () { sideTab = t[0]; renderGame(true); } }, t[1]);
-      })),
-      h('div', { class: 'tab-body', role: 'tabpanel' }, body));
+        h('h2', null, '상태 · 기록'),
+        h('button', { class: 'btn small drawer-close', type: 'button', onclick: function () { drawer = false; renderGame(); } }, '닫기')),
+      win('STATUS · 상태', resBlock(false)),
+      win('PARTNER · 동행', [companionBlock(), toolBlock()]),
+      win('FILE · 기록', [
+        h('div', { class: 'tabs', role: 'tablist' }, tabs.map(function (t) {
+          return h('button', { class: 'tab' + (sideTab === t[0] ? ' on' : ''), role: 'tab', type: 'button', 'aria-selected': sideTab === t[0] ? 'true' : 'false', onclick: function () { sideTab = t[0]; renderGame(true); } }, t[1]);
+        })),
+        h('div', { class: 'tab-body', role: 'tabpanel' }, body)]));
   }
 
   function viewSig() {
@@ -457,16 +494,36 @@
     return [r.slots.total, v.kind, v.id || '', v.page, r.history.length, r.rngState].join('|');
   }
 
+  /* 엔진이 주는 비용·위험 문자열("1슬롯 · 관찰 판정 65% (동행 +10) · 실패 시 침착 -1")을 칩으로 나눈다 */
+  function metaChips(sub) {
+    const out = [];
+    String(sub).split(' · ').forEach(function (part) {
+      part = part.trim();
+      if (!part) return;
+      let m = /^(.+?) 판정 (\d+)%(?: \((.+)\))?$/.exec(part);
+      if (m) {
+        out.push(h('span', { class: 'oc prob' }, h('span', { class: 'meter', 'aria-hidden': 'true' }, h('i', { style: 'width:' + m[2] + '%' })), m[1] + ' ' + m[2] + '%'));
+        if (m[3]) m[3].split(', ').forEach(function (b) { out.push(h('span', { class: 'oc bonus' }, b)); });
+        return;
+      }
+      if (/^확정/.test(part)) { out.push(h('span', { class: 'oc sure' }, h('span', null, part))); return; }
+      if (/^(실패 시|대가:)/.test(part)) { out.push(h('span', { class: 'oc risk' }, '✕ ' + part.replace(/^대가:\s*/, '대가 '))); return; }
+      if (/균열 \+/.test(part)) { out.push(h('span', { class: 'oc crack' }, '◆ ' + part)); return; }
+      if (/▲/.test(part)) { out.push(h('span', { class: 'oc warn' }, part)); return; }
+      out.push(h('span', { class: 'oc' }, part));
+    });
+    return out;
+  }
   function optionButton(o, i) {
-    const label = h('span', { class: 'opt-label' }, h('span', { class: 'opt-key mono', 'aria-hidden': 'true' }, String(i + 1)), o.label);
     return h('button', {
       class: 'opt' + (o.kind === 'next' ? ' next' : '') + (o.kind === 'move' ? ' move' : ''),
       type: 'button', disabled: !o.enabled || busy, 'data-opt': o.id, 'data-enabled': o.enabled ? '1' : '0',
       onclick: function () { pick(o); },
-    }, label,
+    },
+      h('span', { class: 'opt-head' }, h('span', { class: 'opt-key', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'opt-label' }, o.label)),
       o.desc ? h('span', { class: 'opt-desc' }, o.desc) : null,
-      o.sub ? h('span', { class: 'opt-sub' }, o.sub) : null,
-      !o.enabled && o.reason ? h('span', { class: 'opt-why' }, '— ', o.reason) : null);
+      o.sub ? h('span', { class: 'opt-meta' }, metaChips(o.sub)) : null,
+      !o.enabled && o.reason ? h('span', { class: 'opt-why' }, '✕ ', o.reason) : null);
   }
 
   async function pick(o) {
@@ -502,23 +559,26 @@
     const s = E.summary();
     const ok = s.romanceCompleted;
     return h('div', { class: 'summary' },
-      h('p', { class: 'mono small dim' }, '귀환 기록 · 시드 ' + s.seed + ' · 콘텐츠 ' + s.contentVersion),
+      h('span', { class: 'stamp sum-stamp', 'aria-hidden': 'true' }, ok ? '공략 완료' : { apart: '재회 대기', colleague: '동료', distance: '거리' }[s.relationshipOutcome] || '종결'),
+      h('p', { class: 'mono small dim' }, '귀환 보고서 · 시드 ' + s.seed + ' · 콘텐츠 ' + s.contentVersion),
       h('h2', null, ok ? '공략 완료 — ' + s.interestName : BG.josa(s.interestName, '와') + '의 기록'),
       h('div', { class: 'sum-grid' },
         h('div', { class: 'sum-box' },
-          h('h3', null, '사건 결과'),
-          h('ol', null, s.cases.map(function (c) { return h('li', null, h('span', { class: 'mono' }, c.no), ' ', c.title, ' — ', h('strong', null, c.label), h('span', { class: 'dim small' }, ' (변형 ' + c.variant + ')')); })),
-          h('p', null, '최종: ', h('strong', null, s.eventLabel)),
+          h('h3', null, 'CASES · 사건 결과'),
+          h('ol', null, s.cases.map(function (c) {
+            return h('li', null, h('span', { class: 'case-row' }, h('span', { class: 'mono' }, c.no), c.title, h('span', { class: 'stamp' }, c.label), h('span', { class: 'dim small' }, '변형 ' + c.variant)));
+          })),
+          h('p', null, '최종 겹침 — ', h('strong', null, s.eventLabel)),
           h('p', { class: 'small dim' }, '사용 슬롯 ' + s.slots + ' · 균열 ' + s.res.crack + ' · 체력 ' + s.res.hp + ' · 침착 ' + s.res.comp + (s.rescueUsed ? ' · 구조 사용' : ''))),
         h('div', { class: 'sum-box' + (ok ? ' good' : '') },
-          h('h3', null, '관계 결과'),
-          h('p', { class: 'big-line' }, ok ? '♥ ' : '', s.relLabel),
+          h('h3', null, 'RELATION · 관계 결과'),
+          h('p', { class: 'big-line' }, ok ? h('span', { class: 'warn-text' }, '♥ ') : '', s.relLabel),
           h('p', { class: 'mile' }, s.romanceMilestones.map(function (m) { return h('span', { class: m.ok ? 'on' : '' }, (m.ok ? '■ ' : '□ ') + m.label); })),
           h('p', null, '핵심 약속 — ', s.promise.label, ': ', h('strong', null, { kept: '지킴', set: '맺었지만 지켜 보이지 못함', broken: '깨짐', none: '맺지 않음' }[s.promise.state])),
           h('p', { class: 'small' }, '관계 상태 — ', s.labels.trust, ' · ', s.labels.intimacy),
           s.gaps.length ? h('div', null, h('p', { class: 'small' }, '연인 성립에 모자랐던 것'), h('ul', { class: 'small warn-list' }, s.gaps.map(function (g) { return h('li', null, g); }))) : null)),
       h('div', { class: 'sum-box' },
-        h('h3', null, '관계가 움직인 이유'),
+        h('h3', null, 'LOG · 관계가 움직인 이유'),
         s.log.length ? h('ol', { class: 'rel-log' }, s.log.map(function (x) { return h('li', null, (x.k === 'trust' ? '신뢰 ' : '마음 ') + (x.d > 0 ? '▲' : '▼') + ' — ' + x.why); })) : h('p', { class: 'small dim' }, '기록 없음')),
       h('div', { class: 'row wrap' },
         h('button', { class: 'btn primary', type: 'button', onclick: function () { S.clearRun(); E.clear(); newRunFlow(); } }, '새 조사'),
@@ -529,6 +589,31 @@
         } }, '결과 텍스트 복사'),
         h('button', { class: 'btn', type: 'button', onclick: function () { UI.go('records'); } }, '조사기록 보기'),
         h('button', { class: 'btn', type: 'button', onclick: function () { UI.go('title'); } }, '타이틀로')));
+  }
+
+  /* 사건·막간·최종의 첫 페이지에 붙는 장 표지 */
+  function chapterCard(v) {
+    if (v.kind !== 'scene' || v.page !== 0) return null;
+    const r = E.get();
+    let no, title, q, vert;
+    const m = /^(M\d+)\.intro$/.exec(v.id);
+    const il = /^common\.interlude\.(\d)$/.exec(v.id);
+    if (m) {
+      const d = BG.content.cases[m[1]];
+      no = ['제' + (r.chapter + 1) + '화', 'CASE ' + d.no]; title = d.title; q = d.question; vert = '사건 기록';
+    } else if (il) {
+      no = ['막간 ' + il[1], 'INTERLUDE']; title = '숨 고르는 시간'; q = null; vert = '막간';
+    } else if (v.id === 'common.final.intro') {
+      no = ['최종장', 'FINAL']; title = '최종 겹침'; q = '네 개의 기록이 한 번에 겹친다'; vert = '최종 기록';
+    } else if (v.id === 'common.prologue') {
+      no = ['서장', 'PROLOGUE']; title = '첫 기록'; q = '도시의 어떤 장소는 가끔 자기 날짜를 잊는다'; vert = '조사 개시';
+    } else return null;
+    return h('div', { class: 'chapter' },
+      h('div', null,
+        h('p', { class: 'ch-no' }, h('b', null, no[0]), no[1]),
+        h('h2', { class: 'ch-title' }, title),
+        q ? h('p', { class: 'ch-q' }, q) : null),
+      h('span', { class: 'ch-vert', 'aria-hidden': 'true' }, vert));
   }
 
   function renderGame(keepScroll) {
@@ -545,29 +630,42 @@
 
     let stageBody;
     let opts = [];
+    const sheetLabel = v.kind === 'summary' ? '귀환 보고서' : '기록 ' + (hd.code || hd.label);
+    let pageLabel = '';
     if (v.kind === 'summary') {
       stageBody = renderSummary();
     } else {
       const page = v.pages[v.page] || [];
       opts = E.options();
+      const card = chapterCard(v);
+      if (v.pages.length > 1) pageLabel = '쪽 ' + (v.page + 1) + '/' + v.pages.length;
       stageBody = h('div', null,
-        v.title ? h('p', { class: 'view-title mono small' }, v.title) : null,
+        card,
+        v.title && !card ? h('p', { class: 'view-title' }, v.title) : null,
         h('div', { class: 'lines', 'aria-live': 'polite' }, page.map(lineNode)),
-        v.pages.length > 1 ? h('p', { class: 'pager mono small dim' }, (v.page + 1) + ' / ' + v.pages.length) : null,
+        v.pages.length > 1 ? h('p', { class: 'pager' }, (v.page + 1) + ' / ' + v.pages.length) : null,
         h('div', { class: 'opts', role: 'group', 'aria-label': '선택지' }, opts.map(optionButton)));
     }
+    const tense = v.kind === 'confront' || (v.kind === 'final' && r.fin && r.fin.step >= 5);
     const skip = v.kind === 'scene' && E.pageViewed() && v.page < v.pages.length - 1;
-    const stage = h('section', { class: 'stage' + (fresh && v.kind !== 'summary' && settings.textSpeed !== 'instant' && !settings.reduceMotion ? ' revealing speed-' + settings.textSpeed : ''), onclick: function (e) { if (revealing && !e.target.closest('.opt')) finishReveal(); } },
+    const stage = h('section', { class: 'stage' + (tense ? ' tense' : '') + (fresh && v.kind !== 'summary' && settings.textSpeed !== 'instant' && !settings.reduceMotion ? ' revealing speed-' + settings.textSpeed : ''), onclick: function (e) { if (revealing && !e.target.closest('.opt')) finishReveal(); } },
       h('div', { class: 'mini-res' }, resBlock(true), h('button', { class: 'btn small', type: 'button', 'aria-controls': 'side', 'aria-expanded': drawer ? 'true' : 'false', onclick: function () { drawer = true; renderGame(true); } }, '상태·기록')),
-      stageBody);
+      h('article', { class: 'sheet' },
+        h('div', { class: 'sheet-head' },
+          h('span', null, sheetLabel),
+          h('span', null, [pageLabel, tense ? '대치 중' : ''].filter(Boolean).join(' · ') || '조사기록'),
+          h('span', { class: 'seal', 'aria-hidden': 'true' }, '기밀')),
+        stageBody));
     const top = h('header', { class: 'g-top' },
       h('div', { class: 'g-loc' },
-        h('span', { class: 'mono chip' }, hd.code || hd.label),
+        h('span', { class: 'brand' }, BG.VERSION.title),
+        h('span', { class: 'code' }, hd.code || hd.label),
         h('span', { class: 'g-title' }, hd.code ? hd.label + ' · ' + hd.title : hd.title)),
       h('div', { class: 'g-right' },
-        hd.slotsMax ? h('span', { class: 'mono small', title: '이번 구간 슬롯 / 누적 슬롯' }, '슬롯 ' + hd.slotsPhase + '/' + hd.slotsMax + ' · 누적 ' + hd.total + '/60') : null,
-        skip ? h('button', { class: 'btn small', type: 'button', onclick: function () { E.skipRead(); renderGame(); } }, '읽은 장면 넘기기 ▸▸') : null,
-        h('button', { class: 'btn small', type: 'button', onclick: openMenu, 'aria-label': '메뉴 열기' }, '메뉴')));
+        hd.slotsMax ? h('span', { class: 'slots-count', title: '이번 구간 슬롯 / 누적 슬롯' }, '슬롯 ' + hd.slotsPhase + '/' + hd.slotsMax + ' · 누적 ' + hd.total + '/60') : null,
+        skip ? h('button', { class: 'btn small', type: 'button', onclick: function () { E.skipRead(); renderGame(); } }, '읽은 장면 넘기기 ▶▶') : null,
+        h('button', { class: 'btn small', type: 'button', onclick: openMenu, 'aria-label': '메뉴 열기' }, '메뉴')),
+      h('div', { class: 'crackline', style: '--c:' + r.res.crack + '%', title: '균열 ' + r.res.crack + '/100', 'aria-hidden': 'true' }));
     const node = h('div', { class: 'game' + (drawer ? ' drawer-open' : '') }, top, h('div', { class: 'g-body' }, stage, sidePanel()));
     BG.clear(app).appendChild(node);
 
