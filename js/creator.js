@@ -264,7 +264,16 @@
       return [];
     }
 
+    /* 같은 단계 안에서 다시 그릴 때는 스크롤 위치와 키보드 초점을 그대로 둔다.
+     * 단계를 옮길 때만 맨 위로 올린다. */
+    let renderedStep = -1;
+    function focusables() {
+      return Array.prototype.slice.call(app.querySelectorAll('input, select, textarea, button'));
+    }
     function render() {
+      const stepChanged = step !== renderedStep;
+      const keepY = window.scrollY;
+      const focusIdx = stepChanged ? -1 : focusables().indexOf(document.activeElement);
       const builders = [stepBasic, stepPersona, stepBackground, stepStats, stepLook, stepPreview];
       previewEl = h('div', { class: 'live-preview' }, previewNode());
       errorsEl = h('div', { class: 'step-errors', role: 'alert' });
@@ -290,9 +299,16 @@
               h('div', { class: 'win-body' }, previewEl)),
             h('p', { class: 'pv-legend' }, h('span', { class: 'pv-mark', 'aria-hidden': 'true' }), '지금 고치는 칸')) : null));
       BG.clear(app).appendChild(body);
+      renderedStep = step;
       fitPin();
-      app.focus();
-      window.scrollTo(0, 0);
+      if (stepChanged) {
+        app.focus({ preventScroll: true });
+        window.scrollTo(0, 0);
+      } else {
+        window.scrollTo(0, keepY);
+        const el = focusIdx >= 0 ? focusables()[focusIdx] : null;
+        if (el && !el.disabled) el.focus({ preventScroll: true });
+      }
     }
     function next() {
       const errs = validateStep();
